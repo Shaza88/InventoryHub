@@ -1,7 +1,9 @@
 using ServerApp.Models;
+using Microsoft.Extensions.Caching.Memory;
 
 public class ProductService
 {
+    private const string CacheKey_AllProducts = "AllProducts";
     private static List<Product> _products = new List<Product>
     {
         new Product { Id = 1, Name = "Laptop", Price = 999.99M , Stock = 10, Description = "A high-performance laptop.", Categories = new List<Category> { new Category { Id = 1, Name = "Electronics" } } },
@@ -9,9 +11,30 @@ public class ProductService
         new Product { Id = 3, Name = "Headphones", Price = 199.99M , Stock = 15, Description = "Noise-cancelling over-ear headphones.", Categories = new List<Category> { new Category { Id = 1, Name = "Electronics" }, new Category { Id = 3, Name = "Audio" } } }
     };
 
+    private readonly IMemoryCache _cache;
+
+    public ProductService(IMemoryCache cache)
+    {
+        _cache = cache;
+    }
+
     public Task<IEnumerable<Product>> GetAllAsync()
     {
-        return Task.FromResult(_products.AsEnumerable());
+        // Try get from cache first
+        if (_cache.TryGetValue(CacheKey_AllProducts, out IEnumerable<Product>? cached) && cached != null)
+        {
+            return Task.FromResult((IEnumerable<Product>)cached);
+        }
+
+        // Not in cache - add with sliding expiration and absolute expiration
+        var products = _products.AsEnumerable();
+        var cacheEntryOptions = new MemoryCacheEntryOptions()
+            .SetSlidingExpiration(TimeSpan.FromMinutes(5))
+            .SetAbsoluteExpiration(TimeSpan.FromMinutes(30));
+
+        _cache.Set(CacheKey_AllProducts, products, cacheEntryOptions);
+
+        return Task.FromResult(products);
     }
 
     public Task<Product?> GetByIdAsync(int id)
@@ -24,6 +47,10 @@ public class ProductService
     {
         product.Id = _products.Max(p => p.Id) + 1;
         _products.Add(product);
+
+        // Invalidate cache when data changes
+        _cache.Remove(CacheKey_AllProducts);
+
         return Task.FromResult(product);
     }
 
@@ -38,6 +65,10 @@ public class ProductService
         product.Price = updatedProduct.Price;
         product.Description = updatedProduct.Description;
         product.Stock = updatedProduct.Stock;
+
+        // Invalidate cache when data changes
+        _cache.Remove(CacheKey_AllProducts);
+
         return Task.FromResult(true);
     }
 }

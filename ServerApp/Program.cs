@@ -19,6 +19,9 @@ builder.Services.AddCors(options =>
     );
 });
 
+// Add in-memory caching
+builder.Services.AddMemoryCache();
+
 
 var app = builder.Build();
 
