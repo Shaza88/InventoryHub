@@ -1,0 +1,43 @@
+@page "/productlist"
+
+@using ClientAppdotnet.Models
+@inject ProductService ProductService
+
+<h3>Product List</h3>
+
+@if (isLoading)
+{
+    <p>Loading...</p>
+}
+else if (!string.IsNullOrEmpty(errorMessage))
+{
+    <div class="alert alert-danger">@errorMessage</div>
+}
+else if (products == null || products.Count == 0)
+{
+    <p><em>No products found.</em></p>
+}
+else
+{
+    <ul>
+        @foreach (Product product in products)
+        {
+            <li>@product.Name - $@product.Price</li>
+        }
+    </ul>
+}
+
+@code {
+    List<Product> products = new();
+    bool isLoading = true;
+    string? errorMessage;
+
+    protected override async Task OnInitializedAsync()
+    {
+        isLoading = true;
+        var (Products, ErrorMessage) = await ProductService.GetProductsAsync();
+        products = Products;
+        errorMessage = ErrorMessage;
+        isLoading = false;
+    }
+}
