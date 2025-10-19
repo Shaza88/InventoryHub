@@ -22,7 +22,14 @@ else
     <ul>
         @foreach (Product product in products)
         {
-            <li>@product.Name - $@product.Price</li>
+            <li>
+                <strong>@product.Name</strong> - $@product.Price
+                <div>Stock: @product.Stock</div>
+                @if (product.Categories != null && product.Categories.Count > 0)
+                {
+                    <div>Categories: @string.Join(", ", product.Categories.Select(c => c.Name))</div>
+                }
+            </li>
         }
     </ul>
 }
